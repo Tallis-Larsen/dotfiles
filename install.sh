@@ -9,6 +9,7 @@ if [ ! -d "$HOME/dotfiles" ]; then
     echo ":: The directory $HOME/dotfiles does not exist."
     exit 1
 fi
+
 ask_continue() {
     local message=$1
     local exit_on_no=${2:-true}
@@ -25,6 +26,30 @@ ask_continue() {
     fi
 }
 
+preference_select() {
+    local type=$1
+    shift
+    local app_type=$1
+    shift
+    local options=("$@")
+
+    gum style \
+        --foreground 212 --border-foreground 212 --border normal \
+        --align center --width 50 --margin "0 2" --padding "1 2" \
+        "Select a(n) $type to install"
+
+    CHOICE=$(gum choose "${options[@]}" "NONE")
+
+    if [[ $CHOICE != "NONE" ]]; then
+        yay -Syu --noconfirm --needed
+        yay -S --noconfirm --needed $CHOICE
+        python -O "$HOME"/dotfiles/ags/scripts/apps.py --"$app_type" $CHOICE
+    else
+        echo "Not installing a(n) $type..."
+        sleep .4
+    fi
+}
+
 install_yay() {
     echo ":: Installing yay..."
     sudo pacman -Syu --noconfirm
@@ -34,26 +59,32 @@ install_yay() {
     makepkg -si --noconfirm --needed
 }
 
+install_microtex() {
+    cd ~/dotfiles/setup/MicroTex/
+    makepkg -si
+}
+
 install_packages() {
     echo ":: Installing packages"
     sleep 1
     yay -Syu --noconfirm --needed
     yay -S --noconfirm --needed \
-        hyprland hyprshot hyprcursor hypridle hyprlang hyprpaper hyprpicker \
+        hyprland hyprshot hyprcursor hypridle hyprlang hyprpaper hyprpicker hyprlock \
         hyprutils hyprwayland-scanner xdg-dbus-proxy xdg-desktop-portal \
         xdg-desktop-portal-gtk xdg-desktop-portal-hyprland xdg-user-dirs \
         xdg-utils libxdg-basedir python-pyxdg aylurs-gtk-shell swww gtk3 gtk4 \
         adw-gtk3 adw-gtk-theme libdbusmenu-gtk3 python-pip python-pillow sddm \
-        sddm-theme-corners-git nautilus nm-connection-editor network-manager-applet \
-        networkmanager gnome-bluetooth-3.0 wl-gammarelay bluez bluez-libs bluez-utils \
-        cliphist wl-clipboard pywal-16-colors libadwaita swappy nwg-look alacritty \
+        sddm-theme-corners-git nm-connection-editor network-manager-applet \
+        networkmanager gnome-bluetooth-3.0 wl-gammarelay-rs bluez bluez-libs bluez-utils \
+        cliphist wl-clipboard pywal-16-colors libadwaita swappy nwg-look \
         pavucontrol polkit-gnome brightnessctl man-pages gvfs xarchiver zip imagemagick \
-        blueman fastfetch bibata-cursor-theme gum python-pywayland brave dbus \
+        blueman fastfetch bibata-cursor-theme gum python-pywayland dbus \
         libdrm mesa fwupd rofi-wayland bun-bin pipewire wireplumber udiskie \
         lm_sensors gnome-system-monitor playerctl ttf-meslo-nerd ttf-google-sans \
         ttf-font-awesome ttf-opensans ttf-roboto lshw ttf-material-symbols-variable-git \
         fontconfig dart-sass ttf-meslo-nerd-font-powerlevel10k cpio meson cmake \
-        python-materialyoucolor-git
+        python-materialyoucolor-git gtksourceview3 gtksourceviewmm cairomm \
+        gtkmm3 tinyxml2 python-requests
 }
 
 setup_yay() {
@@ -73,29 +104,70 @@ setup_sensors() {
 
 check_config_folders() {
     local CHECK_CONFIG_FOLDERS="ags alacritty hypr swappy wal"
-    local EXIT="NO"
+    local DATETIME=$(date '+%Y-%m-%d %H:%M:%S')
+    local EXISTING="NO"
+
+    mkdir -p "$HOME/.backup/$DATETIME/"
 
     for dir in $CHECK_CONFIG_FOLDERS; do
         if [ -d "$HOME/.config/$dir" ]; then
-            echo ":: Error: directory $dir already exists in .config"
-            EXIT="YES"
+            echo ":: Attention: directory $dir already exists in .config"
+            mv $HOME/.config/$dir "$HOME/.backup/$DATETIME/"
+            EXISTING="YES"
         fi
     done
 
-    if [[ $EXIT == "YES" ]]; then
-        echo ":: Please remove it or make a backup of it"
-        exit 1
+    if [[ $EXISTING == "YES" ]]; then
+        echo ":: Old config folder(s) backed up at ~/.backup folder"
     fi
 }
 
-install_tela_nord_icons() {
-    echo ":: Installing Tela Nord icons..."
-    mkdir -p /tmp/install
-    cd /tmp/install
-    git clone https://github.com/vinceliuice/Tela-icon-theme
-    cd Tela-icon-theme
-    ./install.sh nord
-    cd $HOME/dotfiles
+install_icon_theme() {
+    gum style \
+        --foreground 212 --border-foreground 212 --border normal \
+        --align center --width 50 --margin "0 2" --padding "1 2" \
+        "Select an icon theme to install"
+
+    CHOICE=$(gum choose "Tela Icon Theme" "Papirus Icon Theme" "Adwaita Icon Theme")
+
+    if [[ $CHOICE == "Tela Icon Theme" ]]; then
+        echo ":: Installing Tela icons..."
+        mkdir -p /tmp/install
+        cd /tmp/install
+        git clone https://github.com/vinceliuice/Tela-icon-theme
+        cd Tela-icon-theme
+
+        gum style \
+            --foreground 212 --border-foreground 212 --border normal \
+            --align center --width 50 --margin "0 2" --padding "1 2" \
+            "Select a color theme"
+
+        COLOR_CHOICE=$(gum choose --height=20 "nord" "black" "blue" "green" "grey" "orange" \
+            "pink" "purple" "red" "yellow" "brown")
+
+        ./install.sh $COLOR_CHOICE
+        echo -e "Tela-$COLOR_CHOICE-dark\nTela-$COLOR_CHOICE-light" >$HOME/dotfiles/.settings/icon-theme
+        cd $HOME/dotfiles
+
+    elif [[ $CHOICE == "Papirus Icon Theme" ]]; then
+        yay -S --noconfirm --needed papirus-icon-theme papirus-folders
+
+        echo -e "Papirus-Dark\nPapirus-Light" >$HOME/dotfiles/.settings/icon-theme
+
+        gum style \
+            --foreground 212 --border-foreground 212 --border normal \
+            --align center --width 50 --margin "0 2" --padding "1 2" \
+            "Select a color theme"
+
+        COLOR_CHOICE=$(gum choose --height=20 "black" "blue" "cyan" "green" "grey" "indigo" \
+            "brown" "purple" "nordic" "pink" "red" "deeporange" "white" "yellow")
+
+        papirus-folders -C $COLOR_CHOICE
+
+    else
+        yay -S --noconfirm --needed adwaita-icon-theme
+        echo -e "Adwaita\nAdwaita" >$HOME/dotfiles/.settings/icon-theme
+    fi
 }
 
 setup_colors() {
@@ -112,12 +184,13 @@ setup_sddm() {
     sudo chmod 777 /etc/sddm.conf.d/sddm.conf
     sudo chmod 777 /etc/sddm.conf
     sudo chmod -R 777 /usr/share/sddm/themes/corners/
-    sh $HOME/dotfiles/sddm/scripts/wallpaper.sh
+    "$HOME"/dotfiles/sddm/scripts/wallpaper.sh
 }
 
 copy_files() {
     echo ":: Copying files"
-    sh $HOME/dotfiles/setup/copy.sh
+    mkdir -p $HOME/.config
+    "$HOME"/dotfiles/setup/copy.sh
 }
 
 create_links() {
@@ -137,7 +210,7 @@ create_links() {
 install_plugins() {
     echo ":: Plugins"
     hyprpm update
-    sh $HOME/dotfiles/plugins.sh
+    "$HOME"/dotfiles/plugins.sh
 }
 
 install_vencord() {
@@ -189,15 +262,21 @@ main() {
         install_packages
         exit 0
     fi
+
     setup_yay
     if ! command -v gum &>/dev/null; then
         echo ":: gum not installed"
         sudo pacman -S gum
     fi
+
     ask_continue "Proceed with installing packages?" false && install_packages
+    preference_select "file manager" "filemanager" "nautilus" "dolphin" "thunar"
+    preference_select "internet browser" "browser" "brave" "firefox" "google-chrome" "chromium"
+    preference_select "terminal emulator" "terminal" "alacritty" "kitty" "konsole"
+    ask_continue "Proceed with installing MicroTex?*" && install_microtex
     ask_continue "Proceed with setting up sensors?" false && setup_sensors
     ask_continue "Proceed with checking config folders?*" && check_config_folders
-    ask_continue "Proceed with installing Tela Nord icons?" false && install_tela_nord_icons
+    ask_continue "Proceed with installing icon themes?" false && install_icon_theme
     ask_continue "Proceed with setting up colors?*" && setup_colors
     ask_continue "Proceed with setting up SDDM?" false && setup_sddm
     ask_continue "Proceed with copying files?*" && copy_files

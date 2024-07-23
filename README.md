@@ -10,6 +10,9 @@ Here are some key features:
 - **Design**: The design wherever possible is made by [Material 3 design](https://m3.material.io/) (or Material You).
 - **Ripple effect**: There is a ripple effect on almost all of the buttons on the interface
 
+> Discord: <https://discord.gg/nCK3sh8mNU>  
+> If you can support me please :3 [DonationAlerts](https://www.donationalerts.com/r/koeqaife)
+
 ## To install
 
 ```sh
@@ -20,6 +23,12 @@ git clone https://github.com/koeqaife/hyprland-material-you.git
 mv hyprland-material-you dotfiles
 cd dotfiles
 ./install.sh
+
+```
+
+#### Change wallpaper to random wallpaper (after installation)
+```sh
+python ~/dotfiles/hypr/scripts/wallpaper.py -R
 ```
 
 > I'm not sure if it will work, if you have any problems installing it, post in Issues
@@ -58,5 +67,9 @@ cd dotfiles
 - Emoji picker
 
 [![Screenshot](screenshots/emoji.png "emoji picker")](screenshots/emoji.png)
+
+- Left sidebar
+
+[![Screenshot](screenshots/sideleft.png "sideleft")](screenshots/sideleft.png)
 
 > I got some code for AGS from [end-4](https://github.com/end-4/dots-hyprland/) and [kotontrion](https://github.com/kotontrion/dotfiles) configs, thanks to them.

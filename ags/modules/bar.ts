@@ -18,6 +18,7 @@ const bluetooth = await Service.import("bluetooth");
 import Gtk from "gi://Gtk?version=3.0";
 import { MaterialIcon } from "icons.js";
 import config from "services/configuration.ts";
+import { toggleAppsWindow, toggleMediaWindow } from "./sideleft/main.js";
 
 const keyboard_layout = Variable("none");
 hyprland.connect("keyboard-layout", (hyprland, keyboardname, layoutname) => {
@@ -220,6 +221,7 @@ function SysTray() {
                 const items = systemtray.items;
                 // @ts-expect-error
                 self.children = items.map((item) => {
+                    if (!item.id) return undefined;
                     if (item.id.trim() != "nm-applet" && item.id.trim() != "blueman") {
                         return Widget.Button({
                             child: Widget.Icon({ icon: item.bind("icon") }),
@@ -242,9 +244,21 @@ function AppLauncher() {
     const button = Widget.Button({
         class_name: "filled_tonal_button",
         on_clicked: () => {
-            App.toggleWindow("applauncher");
+            toggleAppsWindow();
         },
         child: MaterialIcon("search")
+    });
+
+    return button;
+}
+
+function OpenSideLeft() {
+    const button = Widget.Button({
+        class_name: "filled_tonal_button",
+        on_clicked: () => {
+            App.toggleWindow("sideleft");
+        },
+        child: MaterialIcon("dock_to_right")
     });
 
     return button;
@@ -313,7 +327,7 @@ function MediaPlayer() {
     const button = Widget.Button({
         class_name: "filled_tonal_button",
         on_primary_click_release: () => {
-            App.toggleWindow("media");
+            toggleMediaWindow();
         },
         on_secondary_click_release: () => {
             Utils.execAsync(["playerctl", "play-pause"]).catch(print);
@@ -329,7 +343,6 @@ function MediaPlayer() {
         } else {
             self.visible = false;
             self.tooltip_text = "Unknown";
-            App.closeWindow("media");
         }
     });
 
@@ -405,7 +418,12 @@ function TaskBar() {
     return Widget.Box({
         class_name: "tray",
         spacing: 5,
-        children: hyprland.bind("clients").as(Clients)
+        setup: (self) => {
+            self.hook(hyprland, () => {
+                self.children = Clients(hyprland.clients);
+                self.visible = self.children.length > 0;
+            });
+        }
     });
 }
 
@@ -456,7 +474,7 @@ function Left() {
         class_name: "modules-left",
         hpack: "start",
         spacing: 8,
-        children: [AppLauncher(), MediaPlayer(), TaskBar()]
+        children: [AppLauncher(), OpenSideLeft(), MediaPlayer(), TaskBar()]
     });
 }
 

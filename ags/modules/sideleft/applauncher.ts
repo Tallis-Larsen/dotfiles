@@ -3,11 +3,10 @@ const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 const Gio = imports.gi.Gio;
 const GLib = imports.gi.GLib;
-const WINDOW_NAME = "applauncher";
 import Box from "types/widgets/box";
-import popupwindow from "./misc/popupwindow.ts";
 import { Application } from "types/service/applications";
 import Gtk from "gi://Gtk?version=3.0";
+import { WINDOW_NAME } from "modules/sideleft/main";
 
 const LAUNCH_COUNT_FILE = Gio.File.new_for_path(
     GLib.build_filenamev([GLib.get_home_dir(), ".cache", "launch_counts.json"])
@@ -101,12 +100,11 @@ function AppItem(app: Application): Box<any, any> {
     });
 }
 
-const Applauncher = ({ width = 500, height = 500, spacing = 12 }) => {
+export const Applauncher = () => {
     let applications: Box<any, any>[];
 
     const list = Widget.Box({
-        vertical: true,
-        spacing
+        vertical: true
     });
 
     function repopulate() {
@@ -124,7 +122,7 @@ const Applauncher = ({ width = 500, height = 500, spacing = 12 }) => {
         on_accept: () => {
             const results = applications.filter((item) => item.visible);
             if (results[0]) {
-                App.toggleWindow(WINDOW_NAME);
+                App.closeWindow(WINDOW_NAME);
                 results[0].attribute.app.launch();
             }
         },
@@ -137,17 +135,15 @@ const Applauncher = ({ width = 500, height = 500, spacing = 12 }) => {
 
     return Widget.Box({
         vertical: true,
-        css: `margin: ${spacing * 2}px;`,
         class_name: "applauncher_box",
-        margin_top: 14,
-        margin_left: 14,
+        vexpand: true,
         children: [
             entry,
             Widget.Separator(),
             Widget.Scrollable({
                 hscroll: "never",
-                css: `min-width: ${width}px;` + `min-height: ${height}px;`,
-                child: list
+                child: list,
+                vexpand: true
             })
         ],
         setup: (self) =>
@@ -161,17 +157,3 @@ const Applauncher = ({ width = 500, height = 500, spacing = 12 }) => {
             })
     });
 };
-
-export const applauncher = popupwindow({
-    name: WINDOW_NAME,
-
-    class_name: "applauncher",
-    visible: false,
-    keymode: "exclusive",
-    child: Applauncher({
-        width: 500,
-        height: 500,
-        spacing: 0
-    }),
-    anchor: ["top", "left"]
-});
